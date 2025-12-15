@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Customs Admin Dashboard</title>
+<link rel="stylesheet" href="style.css">
+<style>
+table { width:100%; border-collapse: collapse; margin:20px auto; }
+th, td { padding:12px; border:1px solid #ddd; text-align:center; }
+th { background-color:#1b1f3b; color:#fff; }
+.approved { color: green; font-weight:bold; }
+.rejected { color: red; font-weight:bold; }
+.pending { color: orange; font-weight:bold; }
+button { padding:6px 12px; margin:2px; border:none; border-radius:5px; cursor:pointer; }
+button.approve { background-color:#28a745; color:#fff; }
+button.reject { background-color:#dc3545; color:#fff; }
+button.delete { background-color:#ffc107; color:#000; }
+</style>
+</head>
+<body>
+<h1 style="text-align:center;">Nigeria Customs Service Admin Dashboard</h1>
+<table>
+<thead>
+<tr>
+<th>Full Name</th><th>Replacement No</th><th>NIN</th><th>State</th><th>LGA</th>
+<th>Next of Kin</th><th>Email</th><th>Address</th><th>Qualification</th>
+<th>Marital Status</th><th>Status</th><th>Actions</th>
+</tr>
+</thead>
+<tbody id="adminData"></tbody>
+</table>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAVWGW_xTBdwDRI3YiXwpLWg0px48r4jJg",
+  authDomain: "custom-service-c3357.firebaseapp.com",
+  projectId: "custom-service-c3357",
+  storageBucket: "custom-service-c3357.firebasestorage.app",
+  messagingSenderId: "244899834712",
+  appId: "1:244899834712:web:f3294b8f40b1d29e50932d"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+async function loadAdminTable() {
+  const tbody = document.getElementById("adminData");
+  tbody.innerHTML = "";
+
+  const querySnapshot = await getDocs(collection(db, "customs_applications"));
+
+  if(querySnapshot.empty){
+    tbody.innerHTML = `<tr><td colspan="12">No applications submitted</td></tr>`;
+    return;
+  }
+
+  querySnapshot.forEach(docSnap => {
+    const v = docSnap.data();
+    const id = docSnap.id;
+    const statusClass = v.status.toLowerCase() === "approved" ? "approved" :
+                        v.status.toLowerCase() === "rejected" ? "rejected" : "pending";
+
+    const tr = document.createElement("tr");
+    tr.dataset.id = id;
+    tr.innerHTML = `
+      <td>${v.fullname}</td><td>${v.replacementNo}</td><td>${v.nin}</td>
+      <td>${v.state}</td><td>${v.lga}</td><td>${v.nextOfKin}</td>
+      <td>${v.email}</td><td>${v.address}</td><td>${v.qualification}</td>
+      <td>${v.maritalStatus}</td>
+      <td class="${statusClass}">${v.status}</td>
+      <td>
+        <button class="approve">Approve</button>
+        <button class="reject">Reject</button>
+        <button class="delete">Delete</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Attach event listeners after rows are added
+  tbody.querySelectorAll("button.approve").forEach(btn => {
+    btn.addEventListener("click", () => updateStatus(btn.closest("tr").dataset.id, "Approved"));
+  });
+  tbody.querySelectorAll("button.reject").forEach(btn => {
+    btn.addEventListener("click", () => updateStatus(btn.closest("tr").dataset.id, "Rejected"));
+  });
+  tbody.querySelectorAll("button.delete").forEach(btn => {
+    btn.addEventListener("click", () => deleteApplicant(btn.closest("tr").dataset.id));
+  });
+}
+
+async function updateStatus(id, status){
+  const docRef = doc(db, "customs_applications", id);
+  await updateDoc(docRef, { status });
+  loadAdminTable();
+}
+
+async function deleteApplicant(id){
+  if(!confirm("Are you sure you want to delete this record?")) return;
+  const docRef = doc(db, "customs_applications", id);
+  await deleteDoc(docRef);
+  loadAdminTable();
+}
+
+document.addEventListener("DOMContentLoaded", loadAdminTable);
+</script>
+</body>
+</html>
